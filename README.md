@@ -1,7 +1,65 @@
-# AI-Assisted Fruit and Meat Freshness Assessment System for Market Consumers in Makiling 
-AI-Assisted Fruit and Meat Freshness Assessment System for Market Consumers in Makiling 
+# SURI: An AI-Assisted Image-Based Web Application for the Assessment of Visible Freshness in Selected Fruits and Meat
 
-The AI-Assisted Web-Based Fruit and Meat Freshness Assessment System for Market Consumers in Makiling is a web-based system designed to assist consumers in assessing the visible freshness of selected fruits and meat products before purchasing. The system utilizes artificial intelligence (AI)-based image classification to analyze uploaded or captured product images and provide an estimated freshness assessment.
-The system will implement different classification categories for fruits and meat based on their distinct visible characteristics. Selected fruits will be classified as Fresh, Overripe, or Spoiled, while selected meat products will be classified as Fresh, Questionable, or Spoiled.
-After analyzing the submitted image, the system will present the classification result, estimated freshness score, and corresponding purchase recommendation. Users may also review their previous assessment results through the assessment history feature.
-The system is intended to serve as a decision-support tool for market consumers. Its assessment will be based solely on visible characteristics and will not replace professional food safety inspection, laboratory testing, or established food safety procedures.
+SURI is an AI-assisted web application designed to help market consumers assess the visible freshness of selected fruits and meat products before purchase. The application uses image-based analysis to classify products, estimate freshness, and provide a recommendation based on visible quality cues.
+
+## System Overview
+
+- Fruit categories: Fresh, Overripe, Spoiled
+- Meat categories: Fresh, Questionable, Spoiled
+- Features: image upload, assessment history, user authentication, dashboard, export support
+- Scope: decision support only; not a replacement for laboratory testing or official food safety inspection
+
+## Tech Stack
+
+### Frontend
+- React
+- Vite
+- Tailwind CSS
+- React Router
+- React Hook Form
+- Zustand
+- Zod
+- Axios
+- ESLint
+
+### Backend
+- Node.js + Express
+- Prisma ORM
+- PostgreSQL
+- JWT authentication
+- bcryptjs
+- multer
+- nodemailer
+- helmet
+- cors
+- dotenv
+
+### Data & Export
+- SheetJS (xlsx)
+- jsPDF
+
+### Dev & Testing
+- Node test runner
+- nodemon
+
+## Project Structure
+
+- src/ – frontend application
+- server/ – Express API and middleware
+- prisma/ – Prisma schema, migrations, and seed files
+- uploads/ – uploaded assessment images
+
+## Setup
+
+1. Copy `.env.example` to `.env` and configure your PostgreSQL and mail settings.
+2. Install dependencies:
+   npm install
+3. Generate Prisma client and apply migrations:
+   npx prisma generate
+   npx prisma migrate dev
+4. Run the app:
+   npm run dev
+
+## Notes
+
+This repo includes the main project scaffold for the SURI system, including a frontend app shell, Express API, Prisma data model, and migration setup.
