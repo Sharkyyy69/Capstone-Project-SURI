@@ -35,3 +35,26 @@ body {
 .btn-secondary {
   @apply inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-3 font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50;
 }
+
+.fruit-card {
+  display: flex;
+  height: 120px;
+  width: 120px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1.5rem;
+  border: 1px solid rgba(155, 177, 159, 0.7);
+  background: rgba(255, 255, 255, 0.66);
+  box-shadow: 0 18px 28px rgba(54, 81, 61, 0.09);
+  backdrop-filter: blur(2px);
+  font-size: 4rem;
+  transform: rotate(8deg);
+}
+
+@media (max-width: 1024px) {
+  .fruit-card {
+    height: 94px;
+    width: 94px;
+    font-size: 3rem;
+  }
+}

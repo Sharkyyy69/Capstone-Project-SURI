@@ -1,9 +1,20 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import nodemailer from 'nodemailer';
 import prisma from '../config/prisma.js';
 
 const router = express.Router();
+
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || 'smtp.gmail.com',
+  port: Number(process.env.SMTP_PORT || 587),
+  secure: false,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
 
 function createToken(user) {
   return jwt.sign(
@@ -13,8 +24,35 @@ function createToken(user) {
   );
 }
 
+async function sendWelcomeEmail(email, name) {
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    return;
+  }
+
+  try {
+    await transporter.sendMail({
+      from: `"FreshLens" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
+      to: email,
+      subject: 'Welcome to FreshLens',
+      text: `Hi ${name},\n\nWelcome to FreshLens. Your account has been created successfully.\n\nYou can now log in using your email address and password.`,
+      html: `
+        <div style="font-family: Arial, sans-serif; color: #1f2937;">
+          <h2 style="color: #166534;">Welcome to FreshLens</h2>
+          <p>Hi ${name},</p>
+          <p>Your account has been created successfully.</p>
+          <p>You can now log in using your email address and password.</p>
+        </div>
+      `,
+    });
+  } catch (error) {
+    console.error('Registration email failed:', error.message);
+  }
+}
+
 router.post('/register', async (req, res) => {
-  const { name, email, password } = req.body;
+  const name = String(req.body.name || '').trim();
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const password = String(req.body.password || '');
 
   if (!name || !email || !password) {
     return res.status(400).json({ message: 'Name, email, and password are required.' });
@@ -36,6 +74,8 @@ router.post('/register', async (req, res) => {
     },
   });
 
+  await sendWelcomeEmail(user.email, user.name);
+
   const token = createToken(user);
 
   return res.status(201).json({
@@ -49,7 +89,8 @@ router.post('/register', async (req, res) => {
 });
 
 router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const password = String(req.body.password || '');
 
   if (!email || !password) {
     return res.status(400).json({ message: 'Email and password are required.' });
