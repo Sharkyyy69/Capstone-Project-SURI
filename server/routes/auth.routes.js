@@ -5,6 +5,7 @@ import nodemailer from 'nodemailer';
 import prisma from '../config/prisma.js';
 
 const router = express.Router();
+const pendingRegistrations = new Map();
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
@@ -24,28 +25,35 @@ function createToken(user) {
   );
 }
 
-async function sendWelcomeEmail(email, name) {
+function generateVerificationCode() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+async function sendVerificationEmail(email, code) {
   if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    return;
+    return { sent: false, code };
   }
 
   try {
     await transporter.sendMail({
       from: `"FreshLens" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
       to: email,
-      subject: 'Welcome to FreshLens',
-      text: `Hi ${name},\n\nWelcome to FreshLens. Your account has been created successfully.\n\nYou can now log in using your email address and password.`,
+      subject: 'Your FreshLens verification code',
+      text: `Your FreshLens verification code is ${code}. This code expires in 10 minutes.`,
       html: `
         <div style="font-family: Arial, sans-serif; color: #1f2937;">
-          <h2 style="color: #166534;">Welcome to FreshLens</h2>
-          <p>Hi ${name},</p>
-          <p>Your account has been created successfully.</p>
-          <p>You can now log in using your email address and password.</p>
+          <h2 style="color: #166534;">FreshLens verification</h2>
+          <p>Your verification code is:</p>
+          <p style="font-size: 30px; font-weight: bold; letter-spacing: 4px; color: #166534;">${code}</p>
+          <p>This code expires in 10 minutes.</p>
         </div>
       `,
     });
+
+    return { sent: true, code };
   } catch (error) {
-    console.error('Registration email failed:', error.message);
+    console.error('Verification email failed:', error.message);
+    return { sent: false, code };
   }
 }
 
@@ -64,17 +72,59 @@ router.post('/register', async (req, res) => {
     return res.status(409).json({ message: 'A user with this email already exists.' });
   }
 
+  const verificationCode = generateVerificationCode();
   const passwordHash = await bcrypt.hash(password, 10);
+  const expiresAt = Date.now() + 10 * 60 * 1000;
+
+  pendingRegistrations.set(email, {
+    name,
+    email,
+    passwordHash,
+    code: verificationCode,
+    expiresAt,
+  });
+
+  const result = await sendVerificationEmail(email, verificationCode);
+
+  return res.status(200).json({
+    message: 'Verification code sent to your email address.',
+    email,
+    code: result.sent ? undefined : verificationCode,
+  });
+});
+
+router.post('/verify-registration', async (req, res) => {
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const code = String(req.body.code || '').trim();
+
+  if (!email || !code) {
+    return res.status(400).json({ message: 'Email and verification code are required.' });
+  }
+
+  const pending = pendingRegistrations.get(email);
+
+  if (!pending) {
+    return res.status(400).json({ message: 'No pending registration was found for this email.' });
+  }
+
+  if (Date.now() > pending.expiresAt) {
+    pendingRegistrations.delete(email);
+    return res.status(400).json({ message: 'The verification code has expired. Please register again.' });
+  }
+
+  if (pending.code !== code) {
+    return res.status(400).json({ message: 'The verification code is invalid.' });
+  }
 
   const user = await prisma.user.create({
     data: {
-      name,
-      email,
-      password: passwordHash,
+      name: pending.name,
+      email: pending.email,
+      password: pending.passwordHash,
     },
   });
 
-  await sendWelcomeEmail(user.email, user.name);
+  pendingRegistrations.delete(email);
 
   const token = createToken(user);
 

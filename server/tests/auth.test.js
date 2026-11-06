@@ -7,7 +7,7 @@ process.env.JWT_SECRET = 'test-secret';
 
 const { default: app } = await import('../app.js');
 
-test('register endpoint creates a user with a local SQLite database', async () => {
+test('register and verify endpoints create a user with a local SQLite database', async () => {
   const server = http.createServer(app);
   const email = `test.${Date.now()}.user@example.com`;
 
@@ -15,7 +15,7 @@ test('register endpoint creates a user with a local SQLite database', async () =
   const { port } = server.address();
 
   try {
-    const response = await fetch(`http://localhost:${port}/api/auth/register`, {
+    const registerResponse = await fetch(`http://localhost:${port}/api/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -25,11 +25,26 @@ test('register endpoint creates a user with a local SQLite database', async () =
       }),
     });
 
-    const payload = await response.json();
+    const registerPayload = await registerResponse.json();
 
-    assert.equal(response.status, 201, JSON.stringify(payload));
-    assert.ok(payload.token, 'Expected JWT token to be returned');
-    assert.equal(payload.user.email, email);
+    assert.equal(registerResponse.status, 200, JSON.stringify(registerPayload));
+    assert.ok(registerPayload.code, 'Expected a verification code to be generated');
+    assert.equal(registerPayload.email, email);
+
+    const verifyResponse = await fetch(`http://localhost:${port}/api/auth/verify-registration`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        code: registerPayload.code,
+      }),
+    });
+
+    const verifyPayload = await verifyResponse.json();
+
+    assert.equal(verifyResponse.status, 201, JSON.stringify(verifyPayload));
+    assert.ok(verifyPayload.token, 'Expected JWT token to be returned');
+    assert.equal(verifyPayload.user.email, email);
   } finally {
     await new Promise((resolve, reject) => {
       server.close((error) => (error ? reject(error) : resolve()));
