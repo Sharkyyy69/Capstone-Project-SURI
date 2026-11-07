@@ -93,6 +93,12 @@ router.post('/register', async (req, res) => {
     return res.status(400).json({ message: 'Name, email, and password are required.' });
   }
 
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return res.status(400).json({
+      message: `Your password must be at least ${MIN_PASSWORD_LENGTH} characters long.`,
+    });
+  }
+
   const existingUser = await prisma.user.findUnique({ where: { email } });
 
   if (existingUser) {

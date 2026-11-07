@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import useAuthStore from '../store/useAuthStore';
 
+const MIN_PASSWORD_LENGTH = 8;
+
 export default function RegisterPage() {
   const navigate = useNavigate();
   const { token, setAuth } = useAuthStore();
@@ -30,6 +32,12 @@ export default function RegisterPage() {
 
   const handleRegister = async (event) => {
     event.preventDefault();
+
+    if (form.password.length < MIN_PASSWORD_LENGTH) {
+      setError(`Your password must be at least ${MIN_PASSWORD_LENGTH} characters long.`);
+      return;
+    }
+
     setLoading(true);
     setError('');
     setInfo('');
@@ -171,6 +179,8 @@ export default function RegisterPage() {
                 value={form.password}
                 onChange={handleChange}
                 placeholder="Password"
+                autoComplete="new-password"
+                minLength={MIN_PASSWORD_LENGTH}
                 className="w-full border-0 bg-transparent text-base text-slate-800 placeholder:text-slate-400 focus:outline-none"
                 required
               />
@@ -183,6 +193,8 @@ export default function RegisterPage() {
                 {showPassword ? '◉' : '◌'}
               </button>
             </div>
+
+            <p className="-mt-2 text-sm text-[#4c5b51]">Use at least {MIN_PASSWORD_LENGTH} characters.</p>
 
             <button
               type="submit"

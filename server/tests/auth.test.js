@@ -139,3 +139,16 @@ test('reset code is invalidated after too many wrong attempts', async () => {
     assert.match(correctButLocked.body.message, /invalid or has expired/);
   });
 });
+
+test('registration rejects passwords shorter than 8 characters', async () => {
+  await withServer(async (post) => {
+    const result = await post('/register', {
+      name: 'Short Password',
+      email: `short.${Date.now()}@example.com`,
+      password: 'Abc123!',
+    });
+    assert.equal(result.status, 400);
+    assert.match(result.body.message, /at least 8 characters/);
+    assert.equal(result.body.code, undefined);
+  });
+});
