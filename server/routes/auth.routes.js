@@ -13,15 +13,25 @@ const CODE_TTL_MS = 10 * 60 * 1000;
 const MAX_RESET_ATTEMPTS = 5;
 const MIN_PASSWORD_LENGTH = 8;
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: Number(process.env.SMTP_PORT || 587),
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+// Created on first use rather than at import time: this module is imported
+// before dotenv.config() runs in app.js, so SMTP_* are not set yet at import.
+let transporter;
+
+function getTransporter() {
+  if (!transporter) {
+    transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: Number(process.env.SMTP_PORT || 587),
+      secure: false,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+  }
+
+  return transporter;
+}
 
 function createToken(user) {
   return jwt.sign(
@@ -61,7 +71,7 @@ async function sendCodeEmail(email, code, purpose = 'verification') {
   const template = emailTemplates[purpose];
 
   try {
-    await transporter.sendMail({
+    await getTransporter().sendMail({
       from: `"SURI" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
       to: email,
       subject: template.subject,

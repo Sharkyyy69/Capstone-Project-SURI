@@ -4,6 +4,10 @@ import http from 'node:http';
 
 process.env.DATABASE_URL = 'file:./prisma/dev.db';
 process.env.JWT_SECRET = 'test-secret';
+// Never send real email from tests, even if a local .env has SMTP credentials.
+// dotenv does not overwrite variables that are already set.
+process.env.SMTP_USER = '';
+process.env.SMTP_PASS = '';
 
 const { default: app } = await import('../app.js');
 
