@@ -108,7 +108,7 @@ export default function RegisterPage() {
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#2e8b5d] text-xl font-black text-white">
               <span>🍊</span>
             </div>
-            <span className="text-3xl font-black tracking-[-0.06em] text-[#1d3f2f]">FreshLens</span>
+            <span className="text-3xl font-black tracking-[-0.06em] text-[#1d3f2f]">SURI</span>
           </div>
         </div>
 
@@ -119,7 +119,7 @@ export default function RegisterPage() {
           <p className="mt-3 text-base text-[#5e6f63]">
             {stage === 'verification'
               ? `Enter the 6-digit code sent to ${pendingEmail}.`
-              : 'Join FreshLens and start checking freshness.'}
+              : 'Join SURI and start checking freshness.'}
           </p>
         </div>
 

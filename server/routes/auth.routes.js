@@ -36,13 +36,13 @@ async function sendVerificationEmail(email, code) {
 
   try {
     await transporter.sendMail({
-      from: `"FreshLens" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
+      from: `"SURI" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
       to: email,
-      subject: 'Your FreshLens verification code',
-      text: `Your FreshLens verification code is ${code}. This code expires in 10 minutes.`,
+      subject: 'Your SURI verification code',
+      text: `Your SURI verification code is ${code}. This code expires in 10 minutes.`,
       html: `
         <div style="font-family: Arial, sans-serif; color: #1f2937;">
-          <h2 style="color: #166534;">FreshLens verification</h2>
+          <h2 style="color: #166534;">SURI verification</h2>
           <p>Your verification code is:</p>
           <p style="font-size: 30px; font-weight: bold; letter-spacing: 4px; color: #166534;">${code}</p>
           <p>This code expires in 10 minutes.</p>

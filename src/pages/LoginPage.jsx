@@ -71,16 +71,16 @@ function ScanCorners({ className = 'border-[#3f9a6a]' }) {
   );
 }
 
-function FreshLensLogo() {
+function SuriLogo() {
   return (
     <div className="flex flex-col items-center">
       <div className="relative flex h-12 w-12 items-center justify-center">
         <ScanCorners className="border-[#2f8a57]" />
         <span className="text-2xl leading-none" aria-hidden="true">🍅</span>
       </div>
-      <span className="mt-1 text-xl font-extrabold tracking-tight">
-        <span className="text-[#2f8a57]">Fresh</span>
-        <span className="text-[#e0533d]">Lens</span>
+      <span className="mt-1 text-2xl font-extrabold tracking-tight text-[#24724a]">SURI</span>
+      <span className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[#4c5b51]">
+        AI Freshness Assessment
       </span>
     </div>
   );
@@ -234,7 +234,7 @@ export default function LoginPage() {
           </div>
 
           <div className="relative w-full max-w-[420px] rounded-3xl border border-[#edf0ec] bg-white p-7 shadow-[0_20px_50px_rgba(30,60,40,0.08)] sm:p-9">
-            <FreshLensLogo />
+            <SuriLogo />
 
             <div className="mt-4 text-center">
               <h2 className="text-3xl font-extrabold tracking-tight">Welcome!</h2>
@@ -316,7 +316,7 @@ export default function LoginPage() {
             </form>
 
             <p className="mt-7 text-center text-sm text-[#4c5b51]">
-              New to FreshLens?{' '}
+              New to SURI?{' '}
               <Link to="/register" className="font-semibold text-[#24724a] hover:text-[#1b5838]">
                 Create an account
               </Link>
