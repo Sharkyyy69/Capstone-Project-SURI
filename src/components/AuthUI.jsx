@@ -1,4 +1,14 @@
-/* Shared icons and branding for the auth pages (no extra dependencies). */
+/* Shared icons, branding and styles for the auth pages (no extra dependencies). */
+
+export const MIN_PASSWORD_LENGTH = 8;
+
+export const fieldClass =
+  'flex items-center gap-3 rounded-xl border border-[#e6e9e4] bg-[#f6f7f4] px-4 py-3.5 text-[#66736a] transition focus-within:border-[#7fb894] focus-within:bg-white focus-within:ring-4 focus-within:ring-[#7fb894]/15';
+export const inputClass =
+  'w-full border-0 bg-transparent text-base text-[#1d2b22] placeholder:text-[#66736a] focus:outline-none';
+export const primaryButtonClass =
+  'flex w-full items-center justify-center gap-2 rounded-xl bg-[#2f7d52] px-5 py-4 text-base font-semibold text-white shadow-[0_10px_24px_rgba(63,154,106,0.25)] transition hover:bg-[#256743] disabled:cursor-not-allowed disabled:opacity-70';
+export const linkClass = 'font-semibold text-[#24724a] hover:text-[#1b5838]';
 
 export function UserIcon(props) {
   return (
@@ -97,5 +107,21 @@ export function KeyIcon(props) {
       <circle cx="8" cy="15" r="4" />
       <path d="m11 12 9-9M17 6l3 3M14 9l2 2" />
     </svg>
+  );
+}
+
+/* Centered white card on a soft green background, used by the register and password reset pages. */
+export function AuthCardLayout({ children }) {
+  return (
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-[#f4f9f3] via-white to-[#eef6ee] px-5 py-12 text-[#1d2b22]">
+      <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-[#e4f0e3]" />
+      <div className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full border border-[#dceadc]" />
+      <LeafIcon className="pointer-events-none absolute right-[12%] top-[22%] h-7 w-7 -rotate-12 text-[#b9dcc1]" />
+
+      <div className="relative w-full max-w-[420px] rounded-3xl border border-[#edf0ec] bg-white p-7 shadow-[0_20px_50px_rgba(30,60,40,0.08)] sm:p-9">
+        <SuriLogo />
+        {children}
+      </div>
+    </div>
   );
 }
