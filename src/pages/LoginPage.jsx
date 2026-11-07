@@ -180,7 +180,7 @@ export default function LoginPage() {
                   <span>Remember me</span>
                 </label>
 
-                <Link to="/register" className="font-medium text-[#2c8f62] transition hover:text-[#206b4d]">
+                <Link to="/forgot-password" className="font-medium text-[#2c8f62] transition hover:text-[#206b4d]">
                   Forgot password?
                 </Link>
               </div>
