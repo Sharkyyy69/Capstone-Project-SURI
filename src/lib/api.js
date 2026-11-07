@@ -34,7 +34,11 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 && typeof window !== 'undefined') {
+    // A 401 from the auth endpoints (e.g. wrong password) is a normal form error,
+    // not an expired session, so let the page show the message instead of redirecting.
+    const isAuthRequest = error.config?.url?.startsWith('/auth/');
+
+    if (error.response?.status === 401 && !isAuthRequest && typeof window !== 'undefined') {
       window.localStorage.removeItem('suri-auth');
       window.location.href = '/login';
     }

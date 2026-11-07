@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -6,6 +7,11 @@ import prisma from '../config/prisma.js';
 
 const router = express.Router();
 const pendingRegistrations = new Map();
+const pendingPasswordResets = new Map();
+
+const CODE_TTL_MS = 10 * 60 * 1000;
+const MAX_RESET_ATTEMPTS = 5;
+const MIN_PASSWORD_LENGTH = 8;
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
@@ -26,33 +32,54 @@ function createToken(user) {
 }
 
 function generateVerificationCode() {
-  return String(Math.floor(100000 + Math.random() * 900000));
+  return String(crypto.randomInt(100000, 1000000));
 }
 
-async function sendVerificationEmail(email, code) {
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+const emailTemplates = {
+  verification: {
+    subject: 'Your SURI verification code',
+    heading: 'SURI verification',
+    intro: 'Your verification code is:',
+  },
+  'password-reset': {
+    subject: 'Your SURI password reset code',
+    heading: 'Reset your SURI password',
+    intro: 'Use this code to reset your password:',
+    outro: "If you didn't ask to reset your password, you can ignore this email.",
+  },
+};
+
+function isEmailConfigured() {
+  return Boolean(process.env.SMTP_USER && process.env.SMTP_PASS);
+}
+
+async function sendCodeEmail(email, code, purpose = 'verification') {
+  if (!isEmailConfigured()) {
     return { sent: false, code };
   }
+
+  const template = emailTemplates[purpose];
 
   try {
     await transporter.sendMail({
       from: `"SURI" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
       to: email,
-      subject: 'Your SURI verification code',
-      text: `Your SURI verification code is ${code}. This code expires in 10 minutes.`,
+      subject: template.subject,
+      text: `${template.intro} ${code}. This code expires in 10 minutes.${template.outro ? ` ${template.outro}` : ''}`,
       html: `
         <div style="font-family: Arial, sans-serif; color: #1f2937;">
-          <h2 style="color: #166534;">SURI verification</h2>
-          <p>Your verification code is:</p>
+          <h2 style="color: #166534;">${template.heading}</h2>
+          <p>${template.intro}</p>
           <p style="font-size: 30px; font-weight: bold; letter-spacing: 4px; color: #166534;">${code}</p>
           <p>This code expires in 10 minutes.</p>
+          ${template.outro ? `<p style="color: #6b7280;">${template.outro}</p>` : ''}
         </div>
       `,
     });
 
     return { sent: true, code };
   } catch (error) {
-    console.error('Verification email failed:', error.message);
+    console.error(`Email (${purpose}) failed:`, error.message);
     return { sent: false, code };
   }
 }
@@ -74,7 +101,7 @@ router.post('/register', async (req, res) => {
 
   const verificationCode = generateVerificationCode();
   const passwordHash = await bcrypt.hash(password, 10);
-  const expiresAt = Date.now() + 10 * 60 * 1000;
+  const expiresAt = Date.now() + CODE_TTL_MS;
 
   pendingRegistrations.set(email, {
     name,
@@ -84,7 +111,7 @@ router.post('/register', async (req, res) => {
     expiresAt,
   });
 
-  const result = await sendVerificationEmail(email, verificationCode);
+  const result = await sendCodeEmail(email, verificationCode, 'verification');
 
   return res.status(200).json({
     message: 'Verification code sent to your email address.',
@@ -168,6 +195,97 @@ router.post('/login', async (req, res) => {
       email: user.email,
     },
   });
+});
+
+const RESET_REQUEST_MESSAGE = 'If an account exists for that email, a password reset code has been sent.';
+
+router.post('/forgot-password', async (req, res) => {
+  const email = String(req.body.email || '').trim().toLowerCase();
+
+  if (!email) {
+    return res.status(400).json({ message: 'Email is required.' });
+  }
+
+  const user = await prisma.user.findUnique({ where: { email } });
+
+  // Same response whether or not the account exists, so the endpoint
+  // can't be used to find out which emails are registered.
+  if (!user) {
+    return res.json({ message: RESET_REQUEST_MESSAGE, email });
+  }
+
+  const code = generateVerificationCode();
+
+  pendingPasswordResets.set(email, {
+    codeHash: await bcrypt.hash(code, 10),
+    expiresAt: Date.now() + CODE_TTL_MS,
+    attempts: 0,
+  });
+
+  const result = await sendCodeEmail(email, code, 'password-reset');
+
+  // Without SMTP configured, hand the code back so the flow can be tested
+  // locally. Never do this in production: anyone could reset any account.
+  const exposeCode = !result.sent && process.env.NODE_ENV !== 'production';
+
+  return res.json({
+    message: RESET_REQUEST_MESSAGE,
+    email,
+    code: exposeCode ? code : undefined,
+  });
+});
+
+router.post('/reset-password', async (req, res) => {
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const code = String(req.body.code || '').trim();
+  const password = String(req.body.password || '');
+
+  if (!email || !code || !password) {
+    return res.status(400).json({ message: 'Email, reset code, and new password are required.' });
+  }
+
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return res.status(400).json({
+      message: `Your new password must be at least ${MIN_PASSWORD_LENGTH} characters long.`,
+    });
+  }
+
+  const pending = pendingPasswordResets.get(email);
+  const invalidMessage = 'The reset code is invalid or has expired. Please request a new one.';
+
+  if (!pending) {
+    return res.status(400).json({ message: invalidMessage });
+  }
+
+  if (Date.now() > pending.expiresAt || pending.attempts >= MAX_RESET_ATTEMPTS) {
+    pendingPasswordResets.delete(email);
+    return res.status(400).json({ message: invalidMessage });
+  }
+
+  const isCodeValid = await bcrypt.compare(code, pending.codeHash);
+
+  if (!isCodeValid) {
+    pending.attempts += 1;
+    const remaining = MAX_RESET_ATTEMPTS - pending.attempts;
+
+    if (remaining <= 0) {
+      pendingPasswordResets.delete(email);
+      return res.status(400).json({ message: invalidMessage });
+    }
+
+    return res.status(400).json({
+      message: `The reset code is incorrect. ${remaining} attempt${remaining === 1 ? '' : 's'} left.`,
+    });
+  }
+
+  await prisma.user.update({
+    where: { email },
+    data: { password: await bcrypt.hash(password, 10) },
+  });
+
+  pendingPasswordResets.delete(email);
+
+  return res.json({ message: 'Your password has been reset. You can now sign in.' });
 });
 
 export default router;
