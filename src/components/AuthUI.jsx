@@ -110,7 +110,7 @@ export function KeyIcon(props) {
   );
 }
 
-/* Centered white card on a soft green background, used by the register and password reset pages. */
+/* Centered white card on a soft green background, used by the password reset page. */
 export function AuthCardLayout({ children }) {
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-[#f4f9f3] via-white to-[#eef6ee] px-5 py-12 text-[#1d2b22]">

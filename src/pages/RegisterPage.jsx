@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import useAuthStore from '../store/useAuthStore';
+import AuthSplitLayout from '../components/AuthSplitLayout';
 import {
   ArrowIcon,
-  AuthCardLayout,
   EyeIcon,
   KeyIcon,
   LockIcon,
@@ -122,11 +122,11 @@ export default function RegisterPage() {
   const isVerification = stage === 'verification';
 
   return (
-    <AuthCardLayout>
+    <AuthSplitLayout>
       <div className="mt-4 text-center">
-        <h1 className="text-3xl font-extrabold tracking-tight">
+        <h2 className="text-3xl font-extrabold tracking-tight">
           {isVerification ? 'Verify your email' : 'Create account'}
-        </h1>
+        </h2>
         <p className="mt-1.5 text-sm text-[#4c5b51]">
           {isVerification ? (
             <>
@@ -255,6 +255,6 @@ export default function RegisterPage() {
           Sign in
         </Link>
       </p>
-    </AuthCardLayout>
+    </AuthSplitLayout>
   );
 }
