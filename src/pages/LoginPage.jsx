@@ -188,7 +188,7 @@ export default function LoginPage() {
   };
 
   const fieldClass =
-    'flex items-center gap-3 rounded-xl border border-[#e6e9e4] bg-[#f6f7f4] px-4 py-3 text-[#9aa59d] transition focus-within:border-[#7fb894] focus-within:bg-white focus-within:ring-4 focus-within:ring-[#7fb894]/15';
+    'flex items-center gap-3 rounded-xl border border-[#e6e9e4] bg-[#f6f7f4] px-4 py-3.5 text-[#66736a] transition focus-within:border-[#7fb894] focus-within:bg-white focus-within:ring-4 focus-within:ring-[#7fb894]/15';
 
   return (
     <div className="min-h-screen bg-white text-[#1d2b22]">
@@ -238,7 +238,7 @@ export default function LoginPage() {
 
             <div className="mt-4 text-center">
               <h2 className="text-3xl font-extrabold tracking-tight">Welcome!</h2>
-              <p className="mt-1.5 text-sm text-[#6b7a70]">Sign in to your account to continue.</p>
+              <p className="mt-1.5 text-sm text-[#4c5b51]">Sign in to your account to continue.</p>
             </div>
 
             {error && (
@@ -258,7 +258,7 @@ export default function LoginPage() {
                   onChange={handleChange}
                   placeholder="Email"
                   autoComplete="email"
-                  className="w-full border-0 bg-transparent text-sm text-[#1d2b22] placeholder:text-[#9aa59d] focus:outline-none"
+                  className="w-full border-0 bg-transparent text-base text-[#1d2b22] placeholder:text-[#66736a] focus:outline-none"
                   required
                 />
               </label>
@@ -273,13 +273,13 @@ export default function LoginPage() {
                   onChange={handleChange}
                   placeholder="Password"
                   autoComplete="current-password"
-                  className="w-full border-0 bg-transparent text-sm text-[#1d2b22] placeholder:text-[#9aa59d] focus:outline-none"
+                  className="w-full border-0 bg-transparent text-base text-[#1d2b22] placeholder:text-[#66736a] focus:outline-none"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((current) => !current)}
-                  className="shrink-0 rounded-md p-0.5 text-[#9aa59d] transition hover:text-[#2f8a57]"
+                  className="shrink-0 rounded-md p-0.5 text-[#66736a] transition hover:text-[#2f8a57]"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   <EyeIcon off={showPassword} className="h-5 w-5" />
@@ -292,14 +292,14 @@ export default function LoginPage() {
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(event) => setRememberMe(event.target.checked)}
-                    className="h-4 w-4 rounded border-[#c5cfc8] accent-[#2f8a57]"
+                    className="h-5 w-5 rounded border-[#c5cfc8] accent-[#2f8a57]"
                   />
                   Remember me
                 </label>
                 <button
                   type="button"
                   onClick={() => setError('Password reset is not available yet. Please contact support.')}
-                  className="font-semibold text-[#2f8a57] hover:text-[#226b42]"
+                  className="font-semibold text-[#24724a] hover:text-[#1b5838]"
                 >
                   Forgot password?
                 </button>
@@ -308,16 +308,16 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#8fc4a0] px-5 py-3.5 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(63,154,106,0.25)] transition hover:bg-[#3f9a6a] disabled:cursor-not-allowed disabled:opacity-70"
+                className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#2f7d52] px-5 py-4 text-base font-semibold text-white shadow-[0_10px_24px_rgba(63,154,106,0.25)] transition hover:bg-[#256743] disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {loading ? 'Logging in…' : 'Login'}
                 {!loading && <ArrowIcon className="h-4 w-4" />}
               </button>
             </form>
 
-            <p className="mt-7 text-center text-xs text-[#6b7a70]">
+            <p className="mt-7 text-center text-sm text-[#4c5b51]">
               New to FreshLens?{' '}
-              <Link to="/register" className="font-semibold text-[#2f8a57] hover:text-[#226b42]">
+              <Link to="/register" className="font-semibold text-[#24724a] hover:text-[#1b5838]">
                 Create an account
               </Link>
             </p>
