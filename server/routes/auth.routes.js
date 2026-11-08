@@ -3,20 +3,43 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
 import prisma from '../config/prisma.js';
+import {
+  collectErrors,
+  normalizeEmail,
+  normalizeName,
+  requirePassword,
+  validateEmail,
+  validateName,
+  validatePassword,
+} from '../../shared/validation.js';
 
 const router = express.Router();
 const pendingRegistrations = new Map();
 const pendingPasswordResets = new Map();
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: Number(process.env.SMTP_PORT || 587),
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+// Built on first use so it always sees the loaded SMTP env vars,
+// regardless of when this module is imported.
+let transporter;
+function getTransporter() {
+  transporter ??= nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: Number(process.env.SMTP_PORT || 587),
+    secure: false,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+  return transporter;
+}
+
+// Responds 400 with { message, errors } if any check failed; returns true when it did.
+function rejectInvalid(res, checks) {
+  const errors = collectErrors(checks);
+  if (!errors) return false;
+  res.status(400).json({ message: Object.values(errors)[0], errors });
+  return true;
+}
 
 function createToken(user) {
   return jwt.sign(
@@ -49,7 +72,7 @@ function getAuthEmailLayout({ title, intro, detail, code, footer }) {
       <div style="margin: 0; padding: 0; background-color: #edf3ee; font-family: Arial, sans-serif; color: #1f2937;">
         <div style="max-width: 600px; margin: 32px auto; background: #ffffff; border: 1px solid #dfe7df; border-radius: 18px; overflow: hidden; box-shadow: 0 12px 30px rgba(23, 42, 32, 0.08);">
           <div style="background: linear-gradient(135deg, #1d8b5f, #2ca76b); padding: 26px 32px; color: #ffffff;">
-            <div style="font-size: 12px; letter-spacing: 2px; text-transform: uppercase; opacity: 0.9;">FreshLens</div>
+            <div style="font-size: 12px; letter-spacing: 2px; text-transform: uppercase; opacity: 0.9;">SURI</div>
             <h1 style="margin: 12px 0 0; font-size: 30px; line-height: 1.2;">${title}</h1>
           </div>
           <div style="padding: 32px;">
@@ -67,77 +90,63 @@ function getAuthEmailLayout({ title, intro, detail, code, footer }) {
   };
 }
 
-async function sendVerificationEmail(email, code) {
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    return { sent: false, code };
-  }
-
-  const message = getAuthEmailLayout({
+const EMAILS = {
+  verification: {
+    subject: 'Verify your SURI account',
     title: 'Verify your email',
-    intro: 'Thanks for joining FreshLens. To complete your registration, please use the verification code below.',
+    intro: 'Thanks for joining SURI. To complete your registration, please use the verification code below.',
     detail: 'This code expires in 10 minutes. If you did not create an account, you can safely ignore this email.',
-    code,
-    footer: 'FreshLens Security Team',
-  });
-
-  try {
-    await transporter.sendMail({
-      from: `"FreshLens" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
-      to: email,
-      subject: 'Verify your FreshLens account',
-      text: message.text,
-      html: message.html,
-    });
-
-    return { sent: true, code };
-  } catch (error) {
-    console.error('Verification email failed:', error.message);
-    return { sent: false, code };
-  }
-}
-
-async function sendPasswordResetEmail(email, code) {
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    return { sent: false, code };
-  }
-
-  const message = getAuthEmailLayout({
+    footer: 'SURI Security Team',
+  },
+  passwordReset: {
+    subject: 'Reset your SURI password',
     title: 'Reset your password',
-    intro: 'We received a request to reset the password for your FreshLens account.',
+    intro: 'We received a request to reset the password for your SURI account.',
     detail: 'Use the code below to continue with your password reset. This code expires in 10 minutes and can only be used once.',
-    code,
     footer: 'If you did not request this reset, please contact support immediately.',
-  });
+  },
+};
+
+// Emails a one-time code using one of the EMAILS templates; returns whether it was sent.
+async function sendCodeEmail(kind, email, code) {
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    return false;
+  }
+
+  const { subject, ...layout } = EMAILS[kind];
+  const message = getAuthEmailLayout({ ...layout, code });
 
   try {
-    await transporter.sendMail({
-      from: `"FreshLens" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
+    await getTransporter().sendMail({
+      from: `"SURI" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
       to: email,
-      subject: 'Reset your FreshLens password',
+      subject,
       text: message.text,
       html: message.html,
     });
-
-    return { sent: true, code };
+    return true;
   } catch (error) {
-    console.error('Password reset email failed:', error.message);
-    return { sent: false, code };
+    console.error(`${kind} email failed:`, error.message);
+    return false;
   }
 }
 
 router.post('/register', async (req, res) => {
-  const name = String(req.body.name || '').trim();
-  const email = String(req.body.email || '').trim().toLowerCase();
+  const name = normalizeName(req.body.name);
+  const email = normalizeEmail(req.body.email);
   const password = String(req.body.password || '');
 
-  if (!name || !email || !password) {
-    return res.status(400).json({ message: 'Name, email, and password are required.' });
-  }
+  if (rejectInvalid(res, {
+    name: validateName(name),
+    email: validateEmail(email),
+    password: validatePassword(password),
+  })) return;
 
   const existingUser = await prisma.user.findUnique({ where: { email } });
 
   if (existingUser) {
-    return res.status(409).json({ message: 'A user with this email already exists.' });
+    const message = 'A user with this email already exists.';
+    return res.status(409).json({ message, errors: { email: message } });
   }
 
   const verificationCode = generateVerificationCode();
@@ -152,8 +161,8 @@ router.post('/register', async (req, res) => {
     expiresAt,
   });
 
-  const result = await sendVerificationEmail(email, verificationCode);
-  const shouldExposeCode = process.env.NODE_ENV !== 'production' || !result.sent;
+  const sent = await sendCodeEmail('verification', email, verificationCode);
+  const shouldExposeCode = process.env.NODE_ENV !== 'production' || !sent;
 
   return res.status(200).json({
     message: 'Verification code sent to your email address.',
@@ -163,7 +172,7 @@ router.post('/register', async (req, res) => {
 });
 
 router.post('/verify-registration', async (req, res) => {
-  const email = String(req.body.email || '').trim().toLowerCase();
+  const email = normalizeEmail(req.body.email);
   const code = String(req.body.code || '').trim();
 
   if (!email || !code) {
@@ -208,11 +217,9 @@ router.post('/verify-registration', async (req, res) => {
 });
 
 router.post('/forgot-password', async (req, res) => {
-  const email = String(req.body.email || '').trim().toLowerCase();
+  const email = normalizeEmail(req.body.email);
 
-  if (!email) {
-    return res.status(400).json({ message: 'Email is required.' });
-  }
+  if (rejectInvalid(res, { email: validateEmail(email) })) return;
 
   const user = await prisma.user.findUnique({ where: { email } });
 
@@ -228,8 +235,8 @@ router.post('/forgot-password', async (req, res) => {
     expiresAt,
   });
 
-  const result = await sendPasswordResetEmail(email, resetCode);
-  const shouldExposeCode = process.env.NODE_ENV !== 'production' || !result.sent;
+  const sent = await sendCodeEmail('passwordReset', email, resetCode);
+  const shouldExposeCode = process.env.NODE_ENV !== 'production' || !sent;
 
   return res.status(200).json({
     message: 'A password reset code has been sent to your email address.',
@@ -239,7 +246,7 @@ router.post('/forgot-password', async (req, res) => {
 });
 
 router.post('/reset-password', async (req, res) => {
-  const email = String(req.body.email || '').trim().toLowerCase();
+  const email = normalizeEmail(req.body.email);
   const code = String(req.body.code || '').trim();
   const password = String(req.body.password || '');
 
@@ -247,9 +254,7 @@ router.post('/reset-password', async (req, res) => {
     return res.status(400).json({ message: 'Email, reset code, and new password are required.' });
   }
 
-  if (password.length < 8) {
-    return res.status(400).json({ message: 'New password must be at least 8 characters long.' });
-  }
+  if (rejectInvalid(res, { password: validatePassword(password) })) return;
 
   const pendingReset = pendingPasswordResets.get(email);
 
@@ -286,23 +291,24 @@ router.post('/reset-password', async (req, res) => {
 });
 
 router.post('/login', async (req, res) => {
-  const email = String(req.body.email || '').trim().toLowerCase();
+  const email = normalizeEmail(req.body.email);
   const password = String(req.body.password || '');
 
-  if (!email || !password) {
-    return res.status(400).json({ message: 'Email and password are required.' });
-  }
+  if (rejectInvalid(res, {
+    email: validateEmail(email),
+    password: requirePassword(password),
+  })) return;
 
   const user = await prisma.user.findUnique({ where: { email } });
 
   if (!user) {
-    return res.status(401).json({ message: 'Invalid email or password.' });
+    const message = 'No account was found with that email address.';
+    return res.status(401).json({ message, errors: { email: message } });
   }
 
-  const isPasswordValid = await bcrypt.compare(password, user.password);
-
-  if (!isPasswordValid) {
-    return res.status(401).json({ message: 'Invalid email or password.' });
+  if (!(await bcrypt.compare(password, user.password))) {
+    const message = 'Incorrect password. Please try again.';
+    return res.status(401).json({ message, errors: { password: message } });
   }
 
   const token = createToken(user);

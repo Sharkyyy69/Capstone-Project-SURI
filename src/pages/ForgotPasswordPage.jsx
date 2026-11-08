@@ -1,6 +1,16 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../lib/api';
+import FormField from '../components/FormField';
+import {
+  PASSWORD_HINT,
+  PASSWORD_MAX,
+  collectErrors,
+  normalizeEmail,
+  validateConfirmPassword,
+  validateEmail,
+  validatePassword,
+} from '../../shared/validation.js';
 
 const initialForm = {
   email: '',
@@ -12,6 +22,7 @@ const initialForm = {
 export default function ForgotPasswordPage() {
   const navigate = useNavigate();
   const [form, setForm] = useState(initialForm);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [step, setStep] = useState('request');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -21,17 +32,26 @@ export default function ForgotPasswordPage() {
     const { name, value } = event.target;
     setForm((current) => ({ ...current, [name]: value }));
     setError('');
+    setFieldErrors((current) => ({ ...current, [name]: '' }));
+  };
+
+  // Validates locally first; returns false (and shows the errors) if anything is wrong.
+  const checkFields = (checks) => {
+    const errors = collectErrors(checks);
+    setFieldErrors(errors || {});
+    return !errors;
   };
 
   const handleRequestCode = async (event) => {
     event.preventDefault();
-    setIsLoading(true);
     setError('');
     setMessage('');
+    if (!checkFields({ email: validateEmail(form.email) })) return;
 
+    setIsLoading(true);
     try {
       const { data } = await api.post('/auth/forgot-password', {
-        email: form.email.trim().toLowerCase(),
+        email: normalizeEmail(form.email),
       });
 
       setMessage(
@@ -47,19 +67,19 @@ export default function ForgotPasswordPage() {
 
   const handleResetPassword = async (event) => {
     event.preventDefault();
-    setIsLoading(true);
     setError('');
     setMessage('');
+    const valid = checkFields({
+      code: form.code.trim() ? '' : 'Enter the reset code from your email.',
+      password: validatePassword(form.password),
+      confirmPassword: validateConfirmPassword(form.password, form.confirmPassword),
+    });
+    if (!valid) return;
 
-    if (form.password !== form.confirmPassword) {
-      setError('Passwords do not match.');
-      setIsLoading(false);
-      return;
-    }
-
+    setIsLoading(true);
     try {
       const { data } = await api.post('/auth/reset-password', {
-        email: form.email.trim().toLowerCase(),
+        email: normalizeEmail(form.email),
         code: form.code.trim(),
         password: form.password,
       });
@@ -83,7 +103,7 @@ export default function ForgotPasswordPage() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#2e8b5d] text-lg font-black text-white">
               🍊
             </div>
-            <span className="text-[1.5rem] font-black tracking-[-0.05em] text-[#1d3f2f]">FreshLens</span>
+            <span className="text-[1.5rem] font-black tracking-[-0.05em] text-[#1d3f2f]">SURI</span>
           </div>
 
           <Link to="/login" className="text-sm font-medium text-[#2c8f62] transition hover:text-[#206b4d]">
@@ -115,20 +135,17 @@ export default function ForgotPasswordPage() {
         )}
 
         {showRequestForm ? (
-          <form onSubmit={handleRequestCode} className="space-y-5">
-            <div className="flex items-center gap-3 rounded-2xl border border-[#dfe4de] bg-[#f9f9f8] px-4 py-3 text-[#7a857d] shadow-inner">
-              <span className="text-xl">✉️</span>
-              <input
-                type="email"
-                name="email"
-                value={form.email}
-                onChange={handleChange}
-                placeholder="Email address"
-                autoComplete="email"
-                className="w-full border-0 bg-transparent text-base text-slate-800 placeholder:text-slate-400 focus:outline-none"
-                required
-              />
-            </div>
+          <form onSubmit={handleRequestCode} className="space-y-5" noValidate>
+            <FormField
+              icon="✉️"
+              type="email"
+              name="email"
+              value={form.email}
+              onChange={handleChange}
+              placeholder="Email address"
+              autoComplete="email"
+              error={fieldErrors.email}
+            />
 
             <button
               type="submit"
@@ -139,47 +156,42 @@ export default function ForgotPasswordPage() {
             </button>
           </form>
         ) : (
-          <form onSubmit={handleResetPassword} className="space-y-5">
-            <div className="flex items-center gap-3 rounded-2xl border border-[#dfe4de] bg-[#f9f9f8] px-4 py-3 text-[#7a857d] shadow-inner">
-              <span className="text-xl">🔑</span>
-              <input
-                type="text"
-                name="code"
-                value={form.code}
-                onChange={handleChange}
-                placeholder="Reset code"
-                className="w-full border-0 bg-transparent text-base text-slate-800 placeholder:text-slate-400 focus:outline-none"
-                required
-              />
-            </div>
+          <form onSubmit={handleResetPassword} className="space-y-5" noValidate>
+            <FormField
+              icon="🔑"
+              type="text"
+              name="code"
+              value={form.code}
+              onChange={handleChange}
+              placeholder="Reset code"
+              autoComplete="one-time-code"
+              error={fieldErrors.code}
+            />
 
-            <div className="flex items-center gap-3 rounded-2xl border border-[#dfe4de] bg-[#f9f9f8] px-4 py-3 text-[#7a857d] shadow-inner">
-              <span className="text-xl">🔒</span>
-              <input
-                type="password"
-                name="password"
-                value={form.password}
-                onChange={handleChange}
-                placeholder="New password"
-                autoComplete="new-password"
-                className="w-full border-0 bg-transparent text-base text-slate-800 placeholder:text-slate-400 focus:outline-none"
-                required
-              />
-            </div>
+            <FormField
+              icon="🔒"
+              type="password"
+              name="password"
+              value={form.password}
+              onChange={handleChange}
+              placeholder="New password"
+              autoComplete="new-password"
+              maxLength={PASSWORD_MAX}
+              error={fieldErrors.password}
+              hint={PASSWORD_HINT}
+            />
 
-            <div className="flex items-center gap-3 rounded-2xl border border-[#dfe4de] bg-[#f9f9f8] px-4 py-3 text-[#7a857d] shadow-inner">
-              <span className="text-xl">🔒</span>
-              <input
-                type="password"
-                name="confirmPassword"
-                value={form.confirmPassword}
-                onChange={handleChange}
-                placeholder="Confirm new password"
-                autoComplete="new-password"
-                className="w-full border-0 bg-transparent text-base text-slate-800 placeholder:text-slate-400 focus:outline-none"
-                required
-              />
-            </div>
+            <FormField
+              icon="🔒"
+              type="password"
+              name="confirmPassword"
+              value={form.confirmPassword}
+              onChange={handleChange}
+              placeholder="Confirm new password"
+              autoComplete="new-password"
+              maxLength={PASSWORD_MAX}
+              error={fieldErrors.confirmPassword}
+            />
 
             <button
               type="submit"

@@ -34,7 +34,11 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 && typeof window !== 'undefined') {
+    // Only a 401 on a request that carried a token means the session expired.
+    // Others (e.g. a wrong password on login) are form errors the page should show.
+    const sentToken = Boolean(error.config?.headers?.Authorization);
+
+    if (error.response?.status === 401 && sentToken && typeof window !== 'undefined') {
       window.localStorage.removeItem('suri-auth');
       window.location.href = '/login';
     }

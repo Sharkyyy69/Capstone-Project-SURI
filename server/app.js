@@ -1,12 +1,11 @@
+// First import, so .env is loaded before any other module reads process.env.
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import dotenv from 'dotenv';
 import path from 'path';
 import authRoutes from './routes/auth.routes.js';
 import assessmentRoutes from './routes/assessment.routes.js';
-
-dotenv.config();
 
 const app = express();
 

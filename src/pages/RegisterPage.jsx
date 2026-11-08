@@ -2,14 +2,42 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import useAuthStore from '../store/useAuthStore';
+import FormField, { PasswordToggle } from '../components/FormField';
+import {
+  NAME_CHARS_ERROR,
+  NAME_MAX,
+  PASSWORD_HINT,
+  PASSWORD_MAX,
+  normalizeEmail,
+  normalizeName,
+  stripInvalidNameChars,
+  validateConfirmPassword,
+  validateEmail,
+  validateName,
+  validatePassword,
+} from '../../shared/validation.js';
+
+const FIELDS = ['name', 'email', 'password', 'confirmPassword'];
+
+const validators = {
+  name: (form) => validateName(form.name),
+  email: (form) => validateEmail(form.email),
+  password: (form) => validatePassword(form.password),
+  confirmPassword: (form) => validateConfirmPassword(form.password, form.confirmPassword),
+};
 
 export default function RegisterPage() {
   const navigate = useNavigate();
   const { token, setAuth } = useAuthStore();
-  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' });
+  const [fieldErrors, setFieldErrors] = useState({});
   const [verificationCode, setVerificationCode] = useState('');
   const [pendingEmail, setPendingEmail] = useState('');
   const [stage, setStage] = useState('form');
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (token) {
@@ -17,41 +45,90 @@ export default function RegisterPage() {
     }
   }, [token, navigate]);
 
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
-  const [info, setInfo] = useState('');
-  const [loading, setLoading] = useState(false);
-
   const handleChange = (event) => {
-    const { name, value } = event.target;
-    setForm((current) => ({ ...current, [name]: value }));
+    const { name, value: raw } = event.target;
+    const value = name === 'name' ? stripInvalidNameChars(raw) : raw;
+    const nextForm = { ...form, [name]: value };
+
+    setForm(nextForm);
     setError('');
+    setFieldErrors((current) => {
+      const next = { ...current };
+      if (value !== raw) {
+        next.name = NAME_CHARS_ERROR;
+      } else if (current[name]) {
+        // Re-check live once a field has shown an error, so it clears as soon as it's fixed.
+        next[name] = validators[name](nextForm);
+      }
+      if (name === 'password' && current.confirmPassword) {
+        next.confirmPassword = validators.confirmPassword(nextForm);
+      }
+      return next;
+    });
   };
 
-  const handleRegister = async (event) => {
-    event.preventDefault();
+  const handleBlur = (event) => {
+    const { name } = event.target;
+    if (!form[name]) return; // don't nag about empty fields until submit
+    setFieldErrors((current) => ({ ...current, [name]: validators[name](form) }));
+  };
+
+  // Used by both "Continue" and "Resend code".
+  const requestVerificationCode = async (fallbackMessage) => {
     setLoading(true);
     setError('');
     setInfo('');
 
     try {
       const { data } = await api.post('/auth/register', {
-        name: form.name.trim(),
-        email: form.email.trim().toLowerCase(),
+        name: normalizeName(form.name),
+        email: normalizeEmail(form.email),
         password: form.password,
       });
-
       setPendingEmail(data.email);
+      return data;
+    } catch (err) {
+      // Show server-side problems next to the field they belong to; fall back to the banner.
+      const serverErrors = err.response?.data?.errors;
+      if (serverErrors && stage === 'form') {
+        setFieldErrors((current) => ({ ...current, ...serverErrors }));
+      } else {
+        setError(err.response?.data?.message || fallbackMessage);
+      }
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegister = async (event) => {
+    event.preventDefault();
+
+    const errors = Object.fromEntries(FIELDS.map((field) => [field, validators[field](form)]));
+    setFieldErrors(errors);
+    if (Object.values(errors).some(Boolean)) {
+      return;
+    }
+
+    const data = await requestVerificationCode('Unable to create account.');
+    if (data) {
       setStage('verification');
       setInfo(
         data.code
           ? `Verification code sent for testing: ${data.code}. Use it below.`
           : 'A 6-digit verification code has been sent to your email.',
       );
-    } catch (err) {
-      setError(err.response?.data?.message || 'Unable to create account.');
-    } finally {
-      setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    const data = await requestVerificationCode('Unable to resend verification code.');
+    if (data) {
+      setInfo(
+        data.code
+          ? `A new test code has been generated: ${data.code}`
+          : 'A new verification code has been sent to your email.',
+      );
     }
   };
 
@@ -75,30 +152,7 @@ export default function RegisterPage() {
     }
   };
 
-  const handleResend = async () => {
-    setLoading(true);
-    setError('');
-    setInfo('');
-
-    try {
-      const { data } = await api.post('/auth/register', {
-        name: form.name.trim(),
-        email: form.email.trim().toLowerCase(),
-        password: form.password,
-      });
-
-      setPendingEmail(data.email);
-      setInfo(
-        data.code
-          ? `A new test code has been generated: ${data.code}`
-          : 'A new verification code has been sent to your email.',
-      );
-    } catch (err) {
-      setError(err.response?.data?.message || 'Unable to resend verification code.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const passwordType = showPassword ? 'text' : 'password';
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#edf3ee] px-4 py-10">
@@ -108,7 +162,7 @@ export default function RegisterPage() {
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#2e8b5d] text-xl font-black text-white">
               <span>🍊</span>
             </div>
-            <span className="text-3xl font-black tracking-[-0.06em] text-[#1d3f2f]">FreshLens</span>
+            <span className="text-3xl font-black tracking-[-0.06em] text-[#1d3f2f]">SURI</span>
           </div>
         </div>
 
@@ -119,7 +173,7 @@ export default function RegisterPage() {
           <p className="mt-3 text-base text-[#5e6f63]">
             {stage === 'verification'
               ? `Enter the 6-digit code sent to ${pendingEmail}.`
-              : 'Join FreshLens and start checking freshness.'}
+              : 'Join SURI and start checking freshness.'}
           </p>
         </div>
 
@@ -136,53 +190,59 @@ export default function RegisterPage() {
         )}
 
         {stage === 'form' ? (
-          <form onSubmit={handleRegister} className="space-y-5">
-            <div className="flex items-center gap-3 rounded-2xl border border-[#dfe4de] bg-[#f9f9f8] px-4 py-3 text-[#7a857d] shadow-inner">
-              <span className="text-xl">👤</span>
-              <input
-                type="text"
-                name="name"
-                value={form.name}
-                onChange={handleChange}
-                placeholder="Full name"
-                className="w-full border-0 bg-transparent text-base text-slate-800 placeholder:text-slate-400 focus:outline-none"
-                required
-              />
-            </div>
+          <form onSubmit={handleRegister} className="space-y-5" noValidate>
+            <FormField
+              icon="👤"
+              type="text"
+              name="name"
+              value={form.name}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              placeholder="Full name"
+              autoComplete="name"
+              maxLength={NAME_MAX}
+              error={fieldErrors.name}
+            />
 
-            <div className="flex items-center gap-3 rounded-2xl border border-[#dfe4de] bg-[#f9f9f8] px-4 py-3 text-[#7a857d] shadow-inner">
-              <span className="text-xl">✉️</span>
-              <input
-                type="email"
-                name="email"
-                value={form.email}
-                onChange={handleChange}
-                placeholder="Email address"
-                className="w-full border-0 bg-transparent text-base text-slate-800 placeholder:text-slate-400 focus:outline-none"
-                required
-              />
-            </div>
+            <FormField
+              icon="✉️"
+              type="email"
+              name="email"
+              value={form.email}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              placeholder="Email address"
+              autoComplete="email"
+              error={fieldErrors.email}
+            />
 
-            <div className="flex items-center gap-3 rounded-2xl border border-[#dfe4de] bg-[#f9f9f8] px-4 py-3 text-[#7a857d] shadow-inner">
-              <span className="text-xl">🔒</span>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                name="password"
-                value={form.password}
-                onChange={handleChange}
-                placeholder="Password"
-                className="w-full border-0 bg-transparent text-base text-slate-800 placeholder:text-slate-400 focus:outline-none"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((current) => !current)}
-                className="text-lg text-[#7a857d] transition hover:text-[#2d4e3d]"
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? '◉' : '◌'}
-              </button>
-            </div>
+            <FormField
+              icon="🔒"
+              type={passwordType}
+              name="password"
+              value={form.password}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              placeholder="Password"
+              autoComplete="new-password"
+              maxLength={PASSWORD_MAX}
+              error={fieldErrors.password}
+              hint={PASSWORD_HINT}
+              trailing={<PasswordToggle shown={showPassword} onToggle={() => setShowPassword((s) => !s)} />}
+            />
+
+            <FormField
+              icon="🔒"
+              type={passwordType}
+              name="confirmPassword"
+              value={form.confirmPassword}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              placeholder="Confirm password"
+              autoComplete="new-password"
+              maxLength={PASSWORD_MAX}
+              error={fieldErrors.confirmPassword}
+            />
 
             <button
               type="submit"
@@ -194,18 +254,17 @@ export default function RegisterPage() {
           </form>
         ) : (
           <form onSubmit={handleVerify} className="space-y-5">
-            <div className="flex items-center gap-3 rounded-2xl border border-[#dfe4de] bg-[#f9f9f8] px-4 py-3 text-[#7a857d] shadow-inner">
-              <span className="text-xl">🔐</span>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={verificationCode}
-                onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="Enter 6-digit code"
-                className="w-full border-0 bg-transparent text-center text-2xl font-bold tracking-[0.5rem] text-slate-800 placeholder:text-slate-400 focus:outline-none"
-                required
-              />
-            </div>
+            <FormField
+              icon="🔐"
+              type="text"
+              name="verificationCode"
+              inputMode="numeric"
+              value={verificationCode}
+              onChange={(event) => setVerificationCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="Enter 6-digit code"
+              inputClassName="text-center text-2xl font-bold tracking-[0.5rem]"
+              required
+            />
 
             <button
               type="submit"

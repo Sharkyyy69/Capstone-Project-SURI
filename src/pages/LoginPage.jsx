@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import useAuthStore from '../store/useAuthStore';
+import FormField, { PasswordToggle } from '../components/FormField';
+import { collectErrors, normalizeEmail, requirePassword, validateEmail } from '../../shared/validation.js';
 
 const productCards = [
   { icon: '🍊', className: 'left-10 top-4 rotate-[-14deg]' },
@@ -24,29 +26,51 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
     setForm((current) => ({ ...current, [name]: value }));
     setError('');
+    setFieldErrors((current) => ({ ...current, [name]: '' }));
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    setLoading(true);
     setError('');
+
+    const errors = collectErrors({
+      email: validateEmail(form.email),
+      password: requirePassword(form.password),
+    });
+    setFieldErrors(errors || {});
+    if (errors) {
+      return;
+    }
+
+    setLoading(true);
 
     try {
       const { data } = await api.post('/auth/login', {
-        email: form.email.trim().toLowerCase(),
+        email: normalizeEmail(form.email),
         password: form.password,
       });
 
       setAuth(data.user, data.token, rememberMe);
       navigate('/dashboard', { replace: true });
     } catch (err) {
-      setError(err.response?.data?.message || 'Unable to sign in. Please try again.');
+      const serverErrors = err.response?.data?.errors;
+      if (serverErrors) {
+        setFieldErrors(serverErrors);
+        if (serverErrors.password) {
+          setForm((current) => ({ ...current, password: '' }));
+        }
+      } else if (!err.response) {
+        setError('Cannot reach the server. Check your connection and try again.');
+      } else {
+        setError(err.response.data?.message || 'Unable to sign in. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -117,7 +141,7 @@ export default function LoginPage() {
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#2e8b5d] text-xl font-black text-white">
                   <span>🍊</span>
                 </div>
-                <span className="text-[2.1rem] font-black tracking-[-0.06em] text-[#1d3f2f]">FreshLens</span>
+                <span className="text-[2.1rem] font-black tracking-[-0.06em] text-[#1d3f2f]">SURI</span>
               </div>
             </div>
 
@@ -132,42 +156,29 @@ export default function LoginPage() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="flex items-center gap-3 rounded-2xl border border-[#dfe4de] bg-[#f9f9f8] px-4 py-3 text-[#7a857d] shadow-inner">
-                <span className="text-xl">👤</span>
-                <input
-                  type="email"
-                  name="email"
-                  value={form.email}
-                  onChange={handleChange}
-                  placeholder="Username"
-                  autoComplete="email"
-                  className="w-full border-0 bg-transparent text-base text-slate-800 placeholder:text-slate-400 focus:outline-none"
-                  required
-                />
-              </div>
+            <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+              <FormField
+                icon="👤"
+                type="email"
+                name="email"
+                value={form.email}
+                onChange={handleChange}
+                placeholder="Email address"
+                autoComplete="email"
+                error={fieldErrors.email}
+              />
 
-              <div className="flex items-center gap-3 rounded-2xl border border-[#dfe4de] bg-[#f9f9f8] px-4 py-3 text-[#7a857d] shadow-inner">
-                <span className="text-xl">🔒</span>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  name="password"
-                  value={form.password}
-                  onChange={handleChange}
-                  placeholder="Password"
-                  autoComplete="current-password"
-                  className="w-full border-0 bg-transparent text-base text-slate-800 placeholder:text-slate-400 focus:outline-none"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((current) => !current)}
-                  className="text-lg text-[#7a857d] transition hover:text-[#2d4e3d]"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? '◉' : '◌'}
-                </button>
-              </div>
+              <FormField
+                icon="🔒"
+                type={showPassword ? 'text' : 'password'}
+                name="password"
+                value={form.password}
+                onChange={handleChange}
+                placeholder="Password"
+                autoComplete="current-password"
+                error={fieldErrors.password}
+                trailing={<PasswordToggle shown={showPassword} onToggle={() => setShowPassword((s) => !s)} />}
+              />
 
               <div className="flex items-center justify-between gap-3 text-sm text-[#536a5a]">
                 <label className="inline-flex cursor-pointer items-center gap-2">
@@ -195,7 +206,7 @@ export default function LoginPage() {
             </form>
 
             <p className="mt-7 text-center text-base text-[#405744]">
-              New to FreshLens?{' '}
+              New to SURI?{' '}
               <Link to="/register" className="font-bold text-[#2c8f62] transition hover:text-[#206b4d]">
                 Create an account
               </Link>
