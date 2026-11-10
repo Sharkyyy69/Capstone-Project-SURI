@@ -52,13 +52,16 @@ SURI is an AI-assisted web application designed to help market consumers assess 
 ## Setup
 
 1. Copy `.env.example` to `.env` and configure your PostgreSQL and mail settings.
-2. Install dependencies:
+2. In the first terminal, install the frontend dependencies from the project root and start the client:
    npm install
-3. Generate Prisma client and apply migrations:
-   npx prisma generate
-   npx prisma migrate dev
-4. Run the app:
    npm run dev
+3. In a second terminal, generate the Prisma client and start the API from the server folder:
+   cd server
+   npx prisma generate
+   npm run dev
+
+If you want to run both together from the project root for development, use:
+   npm run dev:all
 
 ## Notes
 

@@ -1,0 +1,13 @@
+{
+  "name": "suri-server",
+  "private": true,
+  "type": "module",
+  "prisma": {
+    "schema": "../prisma/schema.prisma"
+  },
+  "scripts": {
+    "dev": "node --watch server.js",
+    "start": "node server.js",
+    "prisma:generate": "prisma generate --schema ../prisma/schema.prisma"
+  }
+}
