@@ -1,10 +1,15 @@
+import BackButton from '../components/BackButton';
+
 export default function AssessmentPage() {
   return (
     <div className="min-h-screen bg-slate-100 px-6 py-10">
       <div className="mx-auto max-w-5xl">
-        <header className="mb-8">
-          <p className="text-sm uppercase tracking-[0.2em] text-emerald-600">Freshness Assessment</p>
-          <h1 className="mt-2 text-3xl font-bold text-slate-900">Upload product image</h1>
+        <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-sm uppercase tracking-[0.2em] text-emerald-600">Freshness Assessment</p>
+            <h1 className="mt-2 text-3xl font-bold text-slate-900">Upload product image</h1>
+          </div>
+          <BackButton />
         </header>
 
         <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">

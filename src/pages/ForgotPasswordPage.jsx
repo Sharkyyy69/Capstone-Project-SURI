@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../lib/api';
+import BackButton from '../components/BackButton';
 import FormField from '../components/FormField';
 import {
   PASSWORD_HINT,
@@ -106,9 +107,7 @@ export default function ForgotPasswordPage() {
             <span className="text-[1.5rem] font-black tracking-[-0.05em] text-[#1d3f2f]">SURI</span>
           </div>
 
-          <Link to="/login" className="text-sm font-medium text-[#2c8f62] transition hover:text-[#206b4d]">
-            Back to sign in
-          </Link>
+          <BackButton to="/login" label="Back to sign in" />
         </div>
 
         <div className="mb-8 text-center">

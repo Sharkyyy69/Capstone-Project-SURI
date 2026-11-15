@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import useAuthStore from '../store/useAuthStore';
+import BackButton from '../components/BackButton';
 import FormField, { PasswordToggle } from '../components/FormField';
 import { collectErrors, normalizeEmail, requirePassword, validateEmail } from '../../shared/validation.js';
 
@@ -136,6 +137,10 @@ export default function LoginPage() {
 
         <section className="flex flex-1 items-center justify-center bg-[#edf3ee] px-5 py-8 sm:px-8 lg:px-12">
           <div className="w-full max-w-[520px] rounded-[2rem] border border-[#dfe7df] bg-[#f5f7f5]/90 p-6 shadow-[0_15px_45px_rgba(32,61,44,0.08)] sm:p-8 lg:p-10">
+            <div className="mb-4 flex justify-end">
+              <BackButton to="/" label="Back home" />
+            </div>
+
             <div className="mb-7 flex justify-center">
               <div className="flex items-center gap-3 rounded-[1.25rem] border border-[#cfe1d2] bg-[#f0f5f0] px-4 py-3 shadow-sm">
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#2e8b5d] text-xl font-black text-white">

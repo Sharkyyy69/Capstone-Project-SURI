@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import useAuthStore from '../store/useAuthStore';
+import BackButton from '../components/BackButton';
 import FormField, { PasswordToggle } from '../components/FormField';
 import {
   NAME_CHARS_ERROR,
@@ -157,6 +158,10 @@ export default function RegisterPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#edf3ee] px-4 py-10">
       <div className="w-full max-w-[500px] rounded-[2rem] border border-[#dfe7df] bg-[#f7f9f7] p-7 shadow-[0_15px_45px_rgba(32,61,44,0.08)] sm:p-8 lg:p-10">
+        <div className="mb-4 flex justify-end">
+          <BackButton to="/login" label="Back to login" />
+        </div>
+
         <div className="mb-8 flex justify-center">
           <div className="flex items-center gap-3 rounded-[1.25rem] border border-[#cfe1d2] bg-[#f0f5f0] px-4 py-3 shadow-sm">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#2e8b5d] text-xl font-black text-white">
