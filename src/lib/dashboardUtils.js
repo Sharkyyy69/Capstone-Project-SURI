@@ -1,12 +1,24 @@
 export function buildDashboardSummary(assessments = []) {
   const total = assessments.length;
-  const fresh = assessments.filter((item) => String(item.result || '').toLowerCase() === 'fresh').length;
-  const questionable = assessments.filter((item) => String(item.result || '').toLowerCase() === 'questionable').length;
-  const spoiled = assessments.filter((item) => String(item.result || '').toLowerCase() === 'spoiled').length;
+  const statusCounts = {
+    fresh: 0,
+    questionable: 0,
+    spoiled: 0,
+    overripe: 0,
+  };
+
+  assessments.forEach((item) => {
+    const result = String(item.result || '').trim().toLowerCase();
+
+    if (Object.hasOwn(statusCounts, result)) {
+      statusCounts[result] += 1;
+    }
+  });
+
   const averageScore = total
     ? Number((assessments.reduce((sum, item) => sum + Number(item.score || 0), 0) / total).toFixed(2))
     : 0;
-  const highRisk = spoiled;
+  const highRisk = statusCounts.spoiled + statusCounts.overripe;
 
   const byProductType = assessments.reduce((acc, item) => {
     const key = String(item.productType || 'Other');
@@ -18,9 +30,10 @@ export function buildDashboardSummary(assessments = []) {
 
   return {
     total,
-    fresh,
-    questionable,
-    spoiled,
+    fresh: statusCounts.fresh,
+    questionable: statusCounts.questionable,
+    spoiled: statusCounts.spoiled,
+    overripe: statusCounts.overripe,
     averageScore,
     highRisk,
     topProductType: topProductType ? { name: topProductType[0], count: topProductType[1] } : { name: 'N/A', count: 0 },

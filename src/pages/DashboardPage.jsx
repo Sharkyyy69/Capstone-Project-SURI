@@ -62,7 +62,7 @@ export default function DashboardPage() {
   const insights = [
     `${summary.topProductType.name} is the most common category in your recent checks.`,
     `${summary.questionable} assessments need a closer review before purchase.`,
-    `${summary.spoiled} items were flagged as spoiled and should be avoided.`,
+    `${summary.spoiled + summary.overripe} items were flagged as spoiled or overripe and should be avoided or used with caution.`,
   ];
 
   const productBreakdown = useMemo(() => {

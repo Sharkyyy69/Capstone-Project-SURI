@@ -20,6 +20,21 @@ test('buildDashboardSummary calculates totals and averages correctly', () => {
   assert.equal(summary.highRisk, 1);
 });
 
+test('buildDashboardSummary includes overripe assessments in the risk totals', () => {
+  const assessments = [
+    { productType: 'fruit', result: 'Fresh', score: 88 },
+    { productType: 'fruit', result: 'Overripe', score: 54 },
+    { productType: 'fruit', result: 'Spoiled', score: 22 },
+  ];
+
+  const summary = buildDashboardSummary(assessments);
+
+  assert.equal(summary.fresh, 1);
+  assert.equal(summary.overripe, 1);
+  assert.equal(summary.spoiled, 1);
+  assert.equal(summary.highRisk, 2);
+});
+
 test('exportAssessmentCsv includes the expected header and rows', () => {
   const assessments = [
     { itemName: 'Mango', productType: 'fruit', result: 'Fresh', score: 90, recommendation: 'Buy', createdAt: '2026-10-27T00:00:00.000Z' },
