@@ -5,6 +5,7 @@ import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import DashboardPage from './pages/DashboardPage';
 import AssessmentPage from './pages/AssessmentPage';
+import ScannerPage from './pages/ScannerPage';
 import useAuthStore from './store/useAuthStore';
 
 function ProtectedRoute() {
@@ -41,6 +42,7 @@ function App() {
       <Route element={<ProtectedRoute />}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/assess" element={<AssessmentPage />} />
+        <Route path="/scan" element={<ScannerPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

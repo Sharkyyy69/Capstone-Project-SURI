@@ -107,6 +107,9 @@ export default function DashboardPage() {
             <Link to="/assess" className="btn-primary">
               New assessment
             </Link>
+            <Link to="/scan" className="btn-primary">
+              Scan product
+            </Link>
           </div>
         </header>
 
